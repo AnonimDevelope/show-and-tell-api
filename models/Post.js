@@ -6,12 +6,16 @@ const PostSchema = mongoose.Schema({
     required: true,
   },
   content: {
-    type: String,
+    type: String, //Using String instead of an object because of gatsby bug
     required: true,
   },
   slug: {
     type: String,
     required: true,
+  },
+  comments: {
+    type: Array,
+    required: false,
   },
 });
 
