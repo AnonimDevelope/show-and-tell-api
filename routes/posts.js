@@ -11,9 +11,9 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
   const post = new Post({
     title: req.body.title,
-    description: req.body.description,
     slug: req.body.slug,
     content: req.body.content,
+    comments: req.body.comments,
   });
 
   try {
