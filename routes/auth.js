@@ -15,6 +15,11 @@ router.post(
   }
 );
 
+router.post(
+  "/google",
+  passport.authenticate("googleToken", { session: false })
+);
+
 router.post("/login", async (req, res, next) => {
   passport.authenticate("login", async (err, user, info) => {
     try {
