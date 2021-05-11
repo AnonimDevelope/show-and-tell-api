@@ -9,7 +9,16 @@ const PostSchema = mongoose.Schema({
     type: String, //Using String instead of an object because of gatsby bug
     required: true,
   },
+  author: {
+    type: Object,
+    required: true,
+  },
   slug: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  thumbnail: {
     type: String,
     required: true,
   },

@@ -11,15 +11,24 @@ const UserSchema = new Schema({
   },
   password: {
     type: String,
+    required: false,
+  },
+  name: {
+    type: String,
     required: true,
+  },
+  avatar: {
+    type: String,
+    required: false,
   },
 });
 
 UserSchema.pre("save", async function (next) {
-  const user = this;
-  const hash = await bcrypt.hash(this.password, 10);
+  if (this.password) {
+    const hash = await bcrypt.hash(this.password, 10);
 
-  this.password = hash;
+    this.password = hash;
+  }
   next();
 });
 

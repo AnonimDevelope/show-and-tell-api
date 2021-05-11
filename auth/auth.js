@@ -2,7 +2,6 @@ const passport = require("passport");
 const localStrategy = require("passport-local").Strategy;
 const UserModel = require("../models/User");
 const JWTstrategy = require("passport-jwt").Strategy;
-const GooglePlusStrategy = require("passport-google-plus");
 const ExtractJWT = require("passport-jwt").ExtractJwt;
 
 passport.use(
@@ -22,31 +21,23 @@ passport.use(
 );
 
 passport.use(
-  "googleToken",
-  new GooglePlusStrategy(
-    {
-      clientId:
-        "653264637058-sk0aupiel1dkjqt2tmpvn0lkvvm8g512.apps.googleusercontent.com",
-      clientSecret: "If_9V6dLAoCv6kem_ngnCLlW",
-    },
-    function (accessToken, refreshToken, profile, done) {
-      console.log("Tokens: ", accessToken);
-      console.log("Profile: ", profile);
-      //done(null, profile, tokens);
-    }
-  )
-);
-
-passport.use(
   "signup",
   new localStrategy(
     {
       usernameField: "email",
       passwordField: "password",
+      passReqToCallback: true,
     },
-    async (email, password, done) => {
+    async (req, email, password, done) => {
       try {
-        const user = await UserModel.create({ email, password });
+        const { name, avatar } = req.body;
+
+        const isExist = await UserModel.findOne({ email });
+        if (isExist) {
+          return done({ message: "User already exists" });
+        }
+
+        const user = await UserModel.create({ email, password, name, avatar });
 
         return done(null, user);
       } catch (error) {
