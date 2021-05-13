@@ -124,14 +124,20 @@ router.post(
   passport.authenticate("jwt", { session: false }),
   async (req, res, next) => {
     try {
-      const post = await Post.findById(req.params.id).select("likes");
+      const post = await Post.findById(req.params.id).select("likes dislikes");
       const likes = [...post.likes];
+      const dislikes = [...post.dislikes];
       const existingLike = likes.find((id) => id === req.user._id);
+      const existingDislike = dislikes.find((id) => id === req.user._id);
       if (existingLike === req.user._id) {
         return next("Like exists");
       }
+      if (existingDislike === req.user._id) {
+        dislikes.splice(dislikes.indexOf(existingDislike), 1);
+      }
       likes.push(req.user._id);
       post.likes = likes;
+      post.dislikes = dislikes;
 
       await post.save();
 
@@ -172,14 +178,20 @@ router.post(
   passport.authenticate("jwt", { session: false }),
   async (req, res, next) => {
     try {
-      const post = await Post.findById(req.params.id).select("dislikes");
+      const post = await Post.findById(req.params.id).select("dislikes likes");
       const dislikes = [...post.dislikes];
+      const likes = [...post.likes];
       const existingDislike = dislikes.find((id) => id === req.user._id);
+      const existingLike = likes.find((id) => id === req.user._id);
       if (existingDislike === req.user._id) {
         return next("Like exists");
       }
+      if (existingLike === req.user._id) {
+        likes.splice(likes.indexOf(existingLike), 1);
+      }
       dislikes.push(req.user._id);
       post.dislikes = dislikes;
+      post.likes = likes;
 
       await post.save();
 
@@ -195,7 +207,7 @@ router.delete(
   passport.authenticate("jwt", { session: false }),
   async (req, res, next) => {
     try {
-      const post = await Post.findById(req.params.id).select("dislikes");
+      const post = await Post.findById(req.params.id).select("dislikes likes");
       const dislikes = [...post.dislikes];
       const existingDislike = dislikes.find((id) => id === req.user._id);
       if (existingDislike !== req.user._id) {
