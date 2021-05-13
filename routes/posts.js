@@ -22,8 +22,19 @@ const upload = multer({
 const router = express.Router();
 
 router.get("/", async (req, res) => {
-  const posts = await Post.find();
-  res.status(200).json(posts);
+  const posts = await Post.find().sort({ date: 1 }).lean();
+
+  const enhancedPosts = [];
+  for (const post of posts) {
+    const author = await User.findById(post.authorId).select("name avatar");
+    enhancedPosts.push({
+      ...post,
+      author: { name: author.name, avatar: author.avatar, _id: author._id },
+    });
+  }
+  console.log(enhancedPosts);
+
+  res.status(200).json(enhancedPosts);
 });
 
 router.post(
@@ -40,18 +51,19 @@ router.post(
         .quality(60)
         .write("./" + path);
 
-      const user = await User.findById(req.user._id).select("name");
+      // const user = await User.findById(req.user._id).select("name");
 
       const post = new Post({
         title: req.body.title,
-        author: {
-          name: user.name,
-          _id: user._id,
-        },
+        authorId: req.user._id,
         slug: req.body.title.toLowerCase().replaceAll(" ", "-"),
         content: req.body.content,
+        readTime: req.body.readTime,
         thumbnail: process.env.DOMAIN + "/" + path,
         comments: [],
+        likes: [],
+        dislikes: [],
+        date: Date.now(),
       });
 
       await post.save();

@@ -9,8 +9,12 @@ const PostSchema = mongoose.Schema({
     type: String, //Using String instead of an object because of gatsby bug
     required: true,
   },
-  author: {
-    type: Object,
+  readTime: {
+    type: Number,
+    required: true,
+  },
+  authorId: {
+    type: String,
     required: true,
   },
   slug: {
@@ -24,7 +28,19 @@ const PostSchema = mongoose.Schema({
   },
   comments: {
     type: Array,
-    required: false,
+    required: true,
+  },
+  likes: {
+    type: Array,
+    required: true,
+  },
+  dislikes: {
+    type: Array,
+    required: true,
+  },
+  date: {
+    type: Number,
+    required: true,
   },
 });
 
