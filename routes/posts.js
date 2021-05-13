@@ -21,27 +21,30 @@ const upload = multer({
 
 const router = express.Router();
 
-router.get("/", async (req, res) => {
-  const posts = await Post.find().sort({ date: 1 }).lean();
+router.get("/", async (req, res, next) => {
+  try {
+    const posts = await Post.find().sort({ date: -1 }).lean();
 
-  const enhancedPosts = [];
-  for (const post of posts) {
-    const author = await User.findById(post.authorId).select("name avatar");
-    enhancedPosts.push({
-      ...post,
-      author: { name: author.name, avatar: author.avatar, _id: author._id },
-    });
+    const enhancedPosts = [];
+    for (const post of posts) {
+      const author = await User.findById(post.authorId).select("name avatar");
+      enhancedPosts.push({
+        ...post,
+        author: { name: author.name, avatar: author.avatar, _id: author._id },
+      });
+    }
+
+    res.status(200).json(enhancedPosts);
+  } catch (error) {
+    return next(error);
   }
-  console.log(enhancedPosts);
-
-  res.status(200).json(enhancedPosts);
 });
 
 router.post(
   "/",
   passport.authenticate("jwt", { session: false }),
   upload.single("thumbnail"),
-  async (req, res) => {
+  async (req, res, next) => {
     try {
       const path = req.file.path.replaceAll("\\", "/");
 
@@ -69,7 +72,145 @@ router.post(
       await post.save();
       res.status(201).json({ message: "success" });
     } catch (error) {
-      res.status(500).json({ message: error });
+      return next(error);
+    }
+  }
+);
+
+router.get("/:id", async (req, res, next) => {
+  try {
+    const post = await Post.findById(req.params.id).lean();
+
+    const author = await User.findById(post.authorId).select("name avatar");
+    const enhancedPost = {
+      ...post,
+      author: { name: author.name, avatar: author.avatar, _id: author._id },
+    };
+
+    res.status(200).json(enhancedPost);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.get(
+  "/:id/myRate",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    try {
+      const post = await Post.findById(req.params.id).select("likes dislikes");
+      const likes = [...post.likes];
+      const dislikes = [...post.dislikes];
+      const existingLike = likes.find((id) => id === req.user._id);
+      const existingDislike = dislikes.find((id) => id === req.user._id);
+      if (existingLike === req.user._id) {
+        res.status(200).json({ myRate: "liked" });
+        return;
+      }
+      if (existingDislike === req.user._id) {
+        res.status(200).json({ myRate: "disliked" });
+        return;
+      }
+
+      res.status(200).json({ myRate: false });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+router.post(
+  "/:id/likes",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    try {
+      const post = await Post.findById(req.params.id).select("likes");
+      const likes = [...post.likes];
+      const existingLike = likes.find((id) => id === req.user._id);
+      if (existingLike === req.user._id) {
+        return next("Like exists");
+      }
+      likes.push(req.user._id);
+      post.likes = likes;
+
+      await post.save();
+
+      res.status(200).json({ message: "success" });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+router.delete(
+  "/:id/likes",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    try {
+      const post = await Post.findById(req.params.id).select("likes");
+      const likes = [...post.likes];
+      const existingLike = likes.find((id) => id === req.user._id);
+      if (existingLike !== req.user._id) {
+        return next("Like does not exists");
+      }
+
+      likes.splice(likes.indexOf(existingLike), 1);
+
+      post.likes = likes;
+
+      await post.save();
+
+      res.status(200).json({ message: "success" });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+router.post(
+  "/:id/dislikes",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    try {
+      const post = await Post.findById(req.params.id).select("dislikes");
+      const dislikes = [...post.dislikes];
+      const existingDislike = dislikes.find((id) => id === req.user._id);
+      if (existingDislike === req.user._id) {
+        return next("Like exists");
+      }
+      dislikes.push(req.user._id);
+      post.dislikes = dislikes;
+
+      await post.save();
+
+      res.status(200).json({ message: "success" });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+router.delete(
+  "/:id/dislikes",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    try {
+      const post = await Post.findById(req.params.id).select("dislikes");
+      const dislikes = [...post.dislikes];
+      const existingDislike = dislikes.find((id) => id === req.user._id);
+      if (existingDislike !== req.user._id) {
+        return next("Like does not exists");
+      }
+
+      dislikes.splice(dislikes.indexOf(existingDislike), 1);
+
+      post.dislikes = dislikes;
+
+      await post.save();
+
+      res.status(200).json({ message: "success" });
+    } catch (error) {
+      return next(error);
     }
   }
 );
