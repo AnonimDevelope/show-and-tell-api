@@ -21,6 +21,14 @@ const UserSchema = new Schema({
     type: String,
     required: false,
   },
+  history: {
+    type: Array,
+    required: true,
+  },
+  saves: {
+    type: Array,
+    required: true,
+  },
 });
 
 UserSchema.pre("save", async function (next) {

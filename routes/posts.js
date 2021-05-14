@@ -27,12 +27,14 @@ router.get("/", async (req, res, next) => {
 
     const enhancedPosts = [];
     for (const post of posts) {
-      const author = await User.findById(post.authorId).select("name avatar");
+      //const author = await User.findById(post.authorId).select("name avatar");
       enhancedPosts.push({
         ...post,
-        author: { name: author.name, avatar: author.avatar, _id: author._id },
+        //author: { name: author.name, avatar: author.avatar, _id: author._id },
       });
     }
+
+    console.log(enhancedPosts);
 
     res.status(200).json(enhancedPosts);
   } catch (error) {
@@ -54,12 +56,18 @@ router.post(
         .quality(60)
         .write("./" + path);
 
-      // const user = await User.findById(req.user._id).select("name");
+      let slug = req.body.title.toLowerCase().replaceAll(" ", "-");
+
+      const isSlugExist = await Post.exists({ slug });
+
+      if (isSlugExist) {
+        slug = Date.now().toString() + slug;
+      }
 
       const post = new Post({
         title: req.body.title,
         authorId: req.user._id,
-        slug: req.body.title.toLowerCase().replaceAll(" ", "-"),
+        slug: slug,
         content: req.body.content,
         readTime: req.body.readTime,
         thumbnail: process.env.DOMAIN + "/" + path,
@@ -94,25 +102,66 @@ router.get("/:id", async (req, res, next) => {
 });
 
 router.get(
-  "/:id/myRate",
-  passport.authenticate("jwt", { session: false }),
+  "/:id/rate",
+  passport.authenticate(["jwt", "anonymous"], { session: false }),
   async (req, res, next) => {
+    if (!req.user) {
+      try {
+        const post = await Post.findById(req.params.id).select(
+          "likes dislikes"
+        );
+
+        res.status(200).json({
+          myRate: false,
+          likes: post.likes.length,
+          dislikes: post.dislikes.length,
+          isSaved: false,
+        });
+
+        return;
+      } catch (error) {
+        return next(error);
+      }
+    }
+
     try {
       const post = await Post.findById(req.params.id).select("likes dislikes");
+      const user = await User.findById(req.user._id).select("saves").lean();
       const likes = [...post.likes];
       const dislikes = [...post.dislikes];
       const existingLike = likes.find((id) => id === req.user._id);
       const existingDislike = dislikes.find((id) => id === req.user._id);
+      const existingSave = user.saves.find(
+        (item) => item._id === req.params.id
+      );
+
+      console.log(user.saves);
+
       if (existingLike === req.user._id) {
-        res.status(200).json({ myRate: "liked" });
+        res.status(200).json({
+          myRate: "liked",
+          likes: likes.length,
+          dislikes: dislikes.length,
+          isSaved: existingSave ? true : false,
+        });
         return;
       }
       if (existingDislike === req.user._id) {
-        res.status(200).json({ myRate: "disliked" });
+        res.status(200).json({
+          myRate: "disliked",
+          likes: likes.length,
+          dislikes: dislikes.length,
+          isSaved: existingSave ? true : false,
+        });
         return;
       }
 
-      res.status(200).json({ myRate: false });
+      res.status(200).json({
+        myRate: false,
+        likes: likes.length,
+        dislikes: dislikes.length,
+        isSaved: existingSave ? true : false,
+      });
     } catch (error) {
       return next(error);
     }
@@ -120,7 +169,7 @@ router.get(
 );
 
 router.post(
-  "/:id/likes",
+  "/:id/like",
   passport.authenticate("jwt", { session: false }),
   async (req, res, next) => {
     try {
@@ -149,7 +198,7 @@ router.post(
 );
 
 router.delete(
-  "/:id/likes",
+  "/:id/like",
   passport.authenticate("jwt", { session: false }),
   async (req, res, next) => {
     try {
@@ -174,7 +223,7 @@ router.delete(
 );
 
 router.post(
-  "/:id/dislikes",
+  "/:id/dislike",
   passport.authenticate("jwt", { session: false }),
   async (req, res, next) => {
     try {
@@ -203,7 +252,7 @@ router.post(
 );
 
 router.delete(
-  "/:id/dislikes",
+  "/:id/dislike",
   passport.authenticate("jwt", { session: false }),
   async (req, res, next) => {
     try {

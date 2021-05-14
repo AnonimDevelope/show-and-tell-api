@@ -2,6 +2,7 @@ const passport = require("passport");
 const localStrategy = require("passport-local").Strategy;
 const UserModel = require("../models/User");
 const JWTstrategy = require("passport-jwt").Strategy;
+const AnonymousStrategy = require("passport-anonymous").Strategy;
 const ExtractJWT = require("passport-jwt").ExtractJwt;
 
 passport.use(
@@ -20,6 +21,8 @@ passport.use(
   )
 );
 
+passport.use(new AnonymousStrategy());
+
 passport.use(
   "signup",
   new localStrategy(
@@ -37,7 +40,14 @@ passport.use(
           return done({ message: "User already exists" });
         }
 
-        const user = await UserModel.create({ email, password, name, avatar });
+        const user = await UserModel.create({
+          email,
+          password,
+          name,
+          avatar,
+          saves: [],
+          history: [],
+        });
 
         return done(null, user);
       } catch (error) {

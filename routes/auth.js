@@ -40,7 +40,13 @@ router.post("/google", async (req, res, next) => {
         avatar: existingUser.avatar,
       });
     } else {
-      const user = new UserModel({ name, email, avatar });
+      const user = new UserModel({
+        name,
+        email,
+        avatar,
+        saves: [],
+        history: [],
+      }); ////Mam oprit aici
 
       const newUser = await user.save();
       const newToken = jwtSign({ _id: newUser._id, email: newUser.email });
