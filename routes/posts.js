@@ -27,10 +27,10 @@ router.get("/", async (req, res, next) => {
 
     const enhancedPosts = [];
     for (const post of posts) {
-      //const author = await User.findById(post.authorId).select("name avatar");
+      const author = await User.findById(post.authorId).select("name avatar");
       enhancedPosts.push({
         ...post,
-        //author: { name: author.name, avatar: author.avatar, _id: author._id },
+        author: { name: author.name, avatar: author.avatar, _id: author._id },
       });
     }
 
