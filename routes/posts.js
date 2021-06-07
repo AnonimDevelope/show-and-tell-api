@@ -4,6 +4,7 @@ const multer = require("multer");
 const Jimp = require("jimp");
 const Post = require("../models/Post");
 const User = require("../models/User");
+const { Types } = require("mongoose");
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -33,8 +34,6 @@ router.get("/", async (req, res, next) => {
         author: { name: author.name, avatar: author.avatar, _id: author._id },
       });
     }
-
-    console.log(enhancedPosts);
 
     res.status(200).json(enhancedPosts);
   } catch (error) {
@@ -101,6 +100,379 @@ router.get("/:id", async (req, res, next) => {
   }
 });
 
+router.post(
+  "/:id/edit",
+  passport.authenticate("jwt", { session: false }),
+  upload.single("thumbnail"),
+  async (req, res, next) => {
+    try {
+      let image;
+      let path;
+
+      if (req.file) {
+        path = req.file.path.replaceAll("\\", "/");
+
+        image = await Jimp.read(path);
+        image
+          .resize(650, 390)
+          .quality(60)
+          .write("./" + path);
+      }
+
+      let slug = req.body.title.toLowerCase().replaceAll(" ", "-");
+
+      const isSlugExist = await Post.exists({ slug });
+
+      if (isSlugExist) {
+        slug = Date.now().toString() + slug;
+      }
+
+      let updateObj = {
+        title: req.body.title,
+        slug: slug,
+        readTime: req.body.readTime,
+        content: req.body.content,
+      };
+
+      if (image) {
+        updateObj = {
+          title: req.body.title,
+          slug: slug,
+          readTime: req.body.readTime,
+          content: req.body.content,
+          thumbnail: process.env.DOMAIN + "/" + path,
+        };
+      }
+
+      await Post.findOneAndUpdate(
+        { _id: req.params.id, authorId: req.user._id },
+        updateObj
+      );
+
+      res.status(200).json({ message: "success" });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+router.delete(
+  "/:id",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    try {
+      await Post.findOneAndDelete({
+        _id: req.params.id,
+        authorId: req.user._id,
+      });
+
+      res.status(200).json({ message: "success" });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+const getComments = async (req) => {
+  const post = await Post.findById(req.params.id).select("comments");
+  const comments = [...post.comments];
+  const authorIds = [];
+
+  comments.forEach((comment) => {
+    comment.replies.forEach((nestedComm) => {
+      if (!authorIds.includes(nestedComm.authorId)) {
+        authorIds.push(nestedComm.authorId);
+      }
+    });
+
+    if (!authorIds.includes(comment.authorId)) {
+      authorIds.push(comment.authorId);
+    }
+  });
+
+  const authors = await User.find()
+    .where("_id")
+    .in(authorIds)
+    .select("name avatar");
+
+  comments.forEach((comment) => {
+    comment.replies.forEach((nestedComm) => {
+      const author = authors.find(
+        (author) => author._id.toString() === nestedComm.authorId.toString()
+      );
+      nestedComm.author = {
+        name: author.name,
+        avatar: author.avatar,
+      };
+
+      let myAction = "";
+
+      if (nestedComm.likes.find((id) => id === req.user._id)) {
+        myAction = "liked";
+      } else if (nestedComm.dislikes.find((id) => id === req.user._id)) {
+        myAction = "disliked";
+      }
+
+      nestedComm.myAction = myAction;
+      nestedComm.likes = nestedComm.likes.length;
+      nestedComm.dislikes = nestedComm.dislikes.length;
+    });
+
+    const author = authors.find(
+      (author) => author._id.toString() === comment.authorId.toString()
+    );
+    comment.author = {
+      name: author.name,
+      avatar: author.avatar,
+    };
+
+    let myAction = "";
+
+    if (comment.likes.find((id) => id === req.user._id)) {
+      myAction = "liked";
+    } else if (comment.dislikes.find((id) => id === req.user._id)) {
+      myAction = "disliked";
+    }
+
+    comment.likes = comment.likes.length;
+    comment.dislikes = comment.dislikes.length;
+    comment.myAction = myAction;
+  });
+  return comments;
+};
+
+router.get(
+  "/:id/comments",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    try {
+      const comments = await getComments(req);
+
+      res.status(200).json(comments);
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+router.post(
+  "/:id/comments",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    try {
+      const post = await Post.findById(req.params.id).select("comments");
+      const comments = [...post.comments];
+
+      comments.push({
+        _id: Types.ObjectId(),
+        authorId: req.user._id,
+        date: Date.now(),
+        comment: req.body.comment,
+        replies: [],
+        likes: [],
+        dislikes: [],
+      });
+
+      post.comments = comments;
+
+      await post.save();
+
+      const newComments = await getComments(req);
+
+      res.status(201).json(newComments);
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+router.post(
+  "/:id/comments/:commId",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    try {
+      const post = await Post.findById(req.params.id).select("comments");
+      const comments = [...post.comments];
+      const comment = comments.find(
+        (comment) => comment._id.toString() === req.params.commId.toString()
+      );
+
+      comment.replies = [
+        ...comment.replies,
+        {
+          _id: Types.ObjectId(),
+          authorId: req.user._id,
+          date: Date.now(),
+          comment: req.body.comment,
+          likes: [],
+          dislikes: [],
+        },
+      ];
+
+      post.comments = comments;
+
+      post.markModified("post.comments");
+      await post.save();
+
+      const newComments = await getComments(req);
+
+      res.status(201).json(newComments);
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+router.post(
+  "/:id/comments/:commId/like",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    try {
+      const post = await Post.findById(req.params.id).select("comments");
+      const comments = [...post.comments];
+      const comment = comments.find(
+        (comment) => comment._id.toString() === req.params.commId.toString()
+      );
+      const likes = comment.likes;
+      const dislikes = comment.dislikes;
+      const existingLike = likes.find((id) => id === req.user._id);
+      const existingDislike = dislikes.find((id) => id === req.user._id);
+
+      if (existingDislike) {
+        dislikes.splice(dislikes.indexOf(existingDislike), 1);
+      }
+
+      if (existingLike) {
+        likes.splice(likes.indexOf(existingLike), 1);
+      } else {
+        likes.push(req.user._id);
+      }
+
+      post.comments = comments;
+
+      await post.save();
+
+      res.status(200).json({ message: "success" });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+router.post(
+  "/:id/comments/:commId/dislike",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    try {
+      const post = await Post.findById(req.params.id).select("comments");
+      const comments = [...post.comments];
+      const comment = comments.find(
+        (comment) => comment._id.toString() === req.params.commId.toString()
+      );
+      const likes = comment.likes;
+      const dislikes = comment.dislikes;
+      const existingLike = likes.find((id) => id === req.user._id);
+      const existingDislike = dislikes.find((id) => id === req.user._id);
+
+      if (existingLike) {
+        likes.splice(likes.indexOf(existingLike), 1);
+      }
+
+      if (existingDislike) {
+        dislikes.splice(likes.indexOf(existingDislike), 1);
+      } else {
+        dislikes.push(req.user._id);
+      }
+
+      post.comments = comments;
+
+      await post.save();
+
+      res.status(200).json({ message: "success" });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+router.post(
+  "/:id/comments/:commId/:nestedCommId/like",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    try {
+      const post = await Post.findById(req.params.id).select("comments");
+      const comments = [...post.comments];
+      const comment = comments.find(
+        (comment) => comment._id.toString() === req.params.commId.toString()
+      );
+      const nestedComment = comment.replies.find(
+        (comm) => comm._id.toString() === req.params.nestedCommId
+      );
+      const likes = nestedComment.likes;
+      const dislikes = nestedComment.dislikes;
+      const existingLike = likes.find((id) => id === req.user._id);
+      const existingDislike = dislikes.find((id) => id === req.user._id);
+
+      if (existingDislike) {
+        dislikes.splice(dislikes.indexOf(existingDislike), 1);
+      }
+
+      if (existingLike) {
+        likes.splice(likes.indexOf(existingLike), 1);
+      } else {
+        likes.push(req.user._id);
+      }
+
+      post.comments = comments;
+
+      await post.save();
+
+      res.status(200).json({ message: "success" });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+router.post(
+  "/:id/comments/:commId/:nestedCommId/dislike",
+  passport.authenticate("jwt", { session: false }),
+  async (req, res, next) => {
+    try {
+      const post = await Post.findById(req.params.id).select("comments");
+      const comments = [...post.comments];
+      const comment = comments.find(
+        (comment) => comment._id.toString() === req.params.commId.toString()
+      );
+      const nestedComment = comment.replies.find(
+        (comm) => comm._id.toString() === req.params.nestedCommId
+      );
+      const likes = nestedComment.likes;
+      const dislikes = nestedComment.dislikes;
+      const existingLike = likes.find((id) => id === req.user._id);
+      const existingDislike = dislikes.find((id) => id === req.user._id);
+
+      if (existingLike) {
+        likes.splice(likes.indexOf(existingLike), 1);
+      }
+
+      if (existingDislike) {
+        dislikes.splice(likes.indexOf(existingDislike), 1);
+      } else {
+        dislikes.push(req.user._id);
+      }
+
+      post.comments = comments;
+
+      await post.save();
+
+      res.status(200).json({ message: "success" });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
 router.get(
   "/:id/rate",
   passport.authenticate(["jwt", "anonymous"], { session: false }),
@@ -134,8 +506,6 @@ router.get(
       const existingSave = user.saves.find(
         (item) => item._id === req.params.id
       );
-
-      console.log(user.saves);
 
       if (existingLike === req.user._id) {
         res.status(200).json({

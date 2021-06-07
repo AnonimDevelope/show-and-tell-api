@@ -21,13 +21,16 @@ const router = express.Router();
 
 router.post("/posts/file", upload.single("image"), async (req, res, next) => {
   const path = req.file.path.replaceAll("\\", "/");
+  const re = /(?:\.([^.]+))?$/;
+  const type = re.exec(req.file.originalname)[1];
 
-  const image = await Jimp.read(path);
-  image
-    .resize(870, Jimp.AUTO)
-    .quality(60)
-    .write("./" + path);
-
+  if (type === "jpg" || type === "jpeg" || type === "png") {
+    const image = await Jimp.read(path);
+    image
+      .resize(870, Jimp.AUTO)
+      .quality(60)
+      .write("./" + path);
+  }
   try {
     res.json({
       success: 1,
@@ -49,12 +52,16 @@ router.post("/posts/url", async (req, res) => {
     const buffer = await response.buffer();
     const name = Date.now() + url.substring(url.lastIndexOf("/") + 1);
     const path = `/uploads/posts/` + name;
+    const re = /(?:\.([^.]+))?$/;
+    const type = re.exec(req.file.originalname)[1];
 
-    const image = await Jimp.read(buffer);
-    image
-      .resize(870, Jimp.AUTO)
-      .quality(60)
-      .write("." + path);
+    if (type === "jpg" || type === "jpeg" || type === "png") {
+      const image = await Jimp.read(buffer);
+      image
+        .resize(870, Jimp.AUTO)
+        .quality(60)
+        .write("." + path);
+    }
 
     res.status(200).json({
       success: 1,

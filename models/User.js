@@ -29,6 +29,10 @@ const UserSchema = new Schema({
     type: Array,
     required: true,
   },
+  resetCode: {
+    type: String,
+    required: false,
+  },
 });
 
 UserSchema.pre("save", async function (next) {
@@ -41,8 +45,9 @@ UserSchema.pre("save", async function (next) {
 });
 
 UserSchema.methods.isValidPassword = async function (password) {
-  const user = this;
-  const compare = await bcrypt.compare(password, user.password);
+  const compare = await bcrypt.compare(password, this.password);
+
+  console.log(password, this.password);
 
   return compare;
 };

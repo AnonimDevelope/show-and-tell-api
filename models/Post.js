@@ -1,5 +1,71 @@
 const mongoose = require("mongoose");
 
+const NestedCommentSchema = mongoose.Schema({
+  authorId: {
+    type: String,
+    required: true,
+  },
+  date: {
+    type: Number,
+    required: true,
+  },
+  likes: {
+    type: Array,
+    required: true,
+  },
+  dislikes: {
+    type: Array,
+    required: true,
+  },
+  comment: {
+    type: String,
+    required: true,
+  },
+  author: {
+    type: Object,
+    required: false,
+  },
+  myAction: {
+    type: String,
+    required: false,
+  },
+});
+
+const CommentSchema = mongoose.Schema({
+  authorId: {
+    type: String,
+    required: true,
+  },
+  date: {
+    type: Number,
+    required: true,
+  },
+  likes: {
+    type: Array,
+    required: true,
+  },
+  dislikes: {
+    type: Array,
+    required: true,
+  },
+  comment: {
+    type: String,
+    required: true,
+  },
+  replies: {
+    type: [NestedCommentSchema],
+    required: false,
+  },
+  author: {
+    type: Object,
+    required: false,
+  },
+  myAction: {
+    type: String,
+    required: false,
+  },
+});
+
 const PostSchema = mongoose.Schema({
   title: {
     type: String,
@@ -27,8 +93,8 @@ const PostSchema = mongoose.Schema({
     required: true,
   },
   comments: {
-    type: Array,
-    required: true,
+    type: [CommentSchema],
+    required: false,
   },
   likes: {
     type: Array,

@@ -33,7 +33,7 @@ const uploadRoute = require("./routes/upload");
 
 app.use("/posts", postsRoute);
 app.use("/auth", authRoute);
-app.use("/user", passport.authenticate("jwt", { session: false }), userRoute);
+app.use("/user", userRoute);
 app.use(
   "/upload",
   passport.authenticate("jwt", { session: false }),

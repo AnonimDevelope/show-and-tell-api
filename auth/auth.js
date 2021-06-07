@@ -33,21 +33,24 @@ passport.use(
     },
     async (req, email, password, done) => {
       try {
-        const { name, avatar } = req.body;
-
         const isExist = await UserModel.findOne({ email });
+
         if (isExist) {
           return done({ message: "User already exists" });
         }
 
-        const user = await UserModel.create({
+        console.log(password);
+
+        const user = new UserModel({
           email,
           password,
-          name,
-          avatar,
+          name: req.body.name,
           saves: [],
           history: [],
+          resetCode: "0",
         });
+
+        const us = await user.save();
 
         return done(null, user);
       } catch (error) {

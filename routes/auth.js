@@ -20,6 +20,7 @@ router.post(
       email: req.user.email,
       name: req.user.name,
       avatar: req.user.avatar,
+      _id: req.user._id,
     });
   }
 );
@@ -27,7 +28,9 @@ router.post(
 router.post("/google", async (req, res, next) => {
   const { name, email, avatar } = req.body;
   try {
-    const existingUser = await UserModel.findOne({ email });
+    const existingUser = await UserModel.findOne({ email }).select(
+      "email name avatar"
+    );
     if (existingUser) {
       const token = jwtSign({
         _id: existingUser._id,
@@ -38,6 +41,7 @@ router.post("/google", async (req, res, next) => {
         email: existingUser.email,
         name: existingUser.name,
         avatar: existingUser.avatar,
+        _id: existingUser._id,
       });
     } else {
       const user = new UserModel({
@@ -46,7 +50,8 @@ router.post("/google", async (req, res, next) => {
         avatar,
         saves: [],
         history: [],
-      }); ////Mam oprit aici
+        resetCode: "0",
+      });
 
       const newUser = await user.save();
       const newToken = jwtSign({ _id: newUser._id, email: newUser.email });
@@ -56,6 +61,7 @@ router.post("/google", async (req, res, next) => {
         email: newUser.email,
         name: newUser.name,
         avatar: newUser.avatar,
+        _id: newUser._id,
       });
     }
   } catch (error) {
@@ -82,6 +88,7 @@ router.post("/login", async (req, res, next) => {
           email: user.email,
           name: user.name,
           avatar: user.avatar,
+          _id: user._id,
         });
       });
     } catch (error) {
