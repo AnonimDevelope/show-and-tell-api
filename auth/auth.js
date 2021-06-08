@@ -39,8 +39,6 @@ passport.use(
           return done({ message: "User already exists" });
         }
 
-        console.log(password);
-
         const user = new UserModel({
           email,
           password,
@@ -50,7 +48,7 @@ passport.use(
           resetCode: "0",
         });
 
-        const us = await user.save();
+        await user.save();
 
         return done(null, user);
       } catch (error) {

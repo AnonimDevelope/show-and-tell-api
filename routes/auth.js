@@ -1,7 +1,7 @@
 const express = require("express");
 const passport = require("passport");
 const jwt = require("jsonwebtoken");
-const UserModel = require("../models/User");
+const User = require("../models/User");
 
 const router = express.Router();
 
@@ -28,7 +28,7 @@ router.post(
 router.post("/google", async (req, res, next) => {
   const { name, email, avatar } = req.body;
   try {
-    const existingUser = await UserModel.findOne({ email }).select(
+    const existingUser = await User.findOne({ email }).select(
       "email name avatar"
     );
     if (existingUser) {
@@ -36,6 +36,7 @@ router.post("/google", async (req, res, next) => {
         _id: existingUser._id,
         email: existingUser.email,
       });
+
       res.status(200).json({
         token,
         email: existingUser.email,
@@ -44,7 +45,7 @@ router.post("/google", async (req, res, next) => {
         _id: existingUser._id,
       });
     } else {
-      const user = new UserModel({
+      const user = new User({
         name,
         email,
         avatar,
