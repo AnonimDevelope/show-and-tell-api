@@ -5,6 +5,7 @@ const Jimp = require("jimp");
 const Post = require("../models/Post");
 const User = require("../models/User");
 const { Types } = require("mongoose");
+const fetch = require("node-fetch");
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -21,6 +22,12 @@ const upload = multer({
 });
 
 const router = express.Router();
+
+const updateWebHook = () => {
+  fetch(process.env.UPDATE_HOOK, {
+    method: "POST",
+  });
+};
 
 router.get("/", async (req, res, next) => {
   try {
@@ -77,6 +84,9 @@ router.post(
       });
 
       await post.save();
+
+      updateWebHook();
+
       res.status(201).json({ message: "success" });
     } catch (error) {
       return next(error);
@@ -165,6 +175,8 @@ router.delete(
         _id: req.params.id,
         authorId: req.user._id,
       });
+
+      updateWebHook();
 
       res.status(200).json({ message: "success" });
     } catch (error) {

@@ -10,6 +10,12 @@ const bcrypt = require("bcrypt");
 
 const router = express.Router();
 
+const updateWebHook = () => {
+  fetch(process.env.UPDATE_HOOK, {
+    method: "POST",
+  });
+};
+
 router.get(
   "/",
   passport.authenticate("jwt", { session: false }),
@@ -403,7 +409,9 @@ router.post(
         user.password = req.body.password;
       }
 
-      const us = await user.save();
+      await user.save();
+
+      updateWebHook();
 
       res.status(200).json({ message: "success" });
     } catch (error) {
