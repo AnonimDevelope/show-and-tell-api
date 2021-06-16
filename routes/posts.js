@@ -1,33 +1,12 @@
 const express = require("express");
 const passport = require("passport");
-const multer = require("multer");
-const Jimp = require("jimp");
 const Post = require("../models/Post");
 const User = require("../models/User");
 const { Types } = require("mongoose");
-const fetch = require("node-fetch");
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "./uploads/posts");
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + file.originalname);
-  },
-});
-
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: 1024 * 1024 * 15 }, //limit 15 megabytes
-});
+const { uploadToS3, optimizeImage } = require("../functions/upload");
+const Busboy = require("busboy");
 
 const router = express.Router();
-
-const updateWebHook = () => {
-  fetch(process.env.UPDATE_HOOK, {
-    method: "POST",
-  });
-};
 
 router.get("/", async (req, res, next) => {
   try {
@@ -51,17 +30,8 @@ router.get("/", async (req, res, next) => {
 router.post(
   "/",
   passport.authenticate("jwt", { session: false }),
-  upload.single("thumbnail"),
   async (req, res, next) => {
     try {
-      const path = req.file.path.replaceAll("\\", "/");
-
-      const image = await Jimp.read(path);
-      image
-        .resize(650, 390)
-        .quality(60)
-        .write("./" + path);
-
       let slug = req.body.title.toLowerCase().replaceAll(" ", "-");
 
       const isSlugExist = await Post.exists({ slug });
@@ -70,24 +40,31 @@ router.post(
         slug = Date.now().toString() + slug;
       }
 
-      const post = new Post({
-        title: req.body.title,
-        authorId: req.user._id,
-        slug: slug,
-        content: req.body.content,
-        readTime: req.body.readTime,
-        thumbnail: process.env.DOMAIN + "/" + path,
-        comments: [],
-        likes: [],
-        dislikes: [],
-        date: Date.now(),
+      const busboy = new Busboy({ headers: req.headers });
+
+      busboy.on("finish", async () => {
+        const img = await optimizeImage(req.files.thumbnail.data, 675);
+        const url = await uploadToS3(img, req.files.thumbnail.name);
+
+        const post = new Post({
+          title: req.body.title,
+          authorId: req.user._id,
+          slug: slug,
+          content: req.body.content,
+          readTime: req.body.readTime,
+          thumbnail: url,
+          comments: [],
+          likes: [],
+          dislikes: [],
+          date: Date.now(),
+        });
+
+        await post.save();
+
+        res.status(201).json({ message: "success" });
       });
 
-      await post.save();
-
-      updateWebHook();
-
-      res.status(201).json({ message: "success" });
+      req.pipe(busboy);
     } catch (error) {
       return next(error);
     }
@@ -96,7 +73,7 @@ router.post(
 
 router.get("/:id", async (req, res, next) => {
   try {
-    const post = await Post.findById(req.params.id).lean();
+    const post = await Post.findOne({ slug: req.params.id }).lean();
 
     const author = await User.findById(post.authorId).select("name avatar");
     const enhancedPost = {
@@ -113,53 +90,34 @@ router.get("/:id", async (req, res, next) => {
 router.post(
   "/:id/edit",
   passport.authenticate("jwt", { session: false }),
-  upload.single("thumbnail"),
   async (req, res, next) => {
     try {
-      let image;
-      let path;
-
-      if (req.file) {
-        path = req.file.path.replaceAll("\\", "/");
-
-        image = await Jimp.read(path);
-        image
-          .resize(650, 390)
-          .quality(60)
-          .write("./" + path);
-      }
-
       let slug = req.body.title.toLowerCase().replaceAll(" ", "-");
+      const busboy = new Busboy({ headers: req.headers });
 
-      const isSlugExist = await Post.exists({ slug });
-
-      if (isSlugExist) {
-        slug = Date.now().toString() + slug;
-      }
-
-      let updateObj = {
-        title: req.body.title,
-        slug: slug,
-        readTime: req.body.readTime,
-        content: req.body.content,
-      };
-
-      if (image) {
-        updateObj = {
+      busboy.on("finish", async () => {
+        const updateObj = {
           title: req.body.title,
           slug: slug,
           readTime: req.body.readTime,
           content: req.body.content,
-          thumbnail: process.env.DOMAIN + "/" + path,
         };
-      }
 
-      await Post.findOneAndUpdate(
-        { _id: req.params.id, authorId: req.user._id },
-        updateObj
-      );
+        if (req.files.thumbnail) {
+          const img = await optimizeImage(req.files.thumbnail.data, 675);
+          const url = await uploadToS3(img, req.files.thumbnail.name);
+          updateObj.thumbnail = url;
+        }
 
-      res.status(200).json({ message: "success" });
+        await Post.findOneAndUpdate(
+          { _id: req.params.id, authorId: req.user._id },
+          updateObj
+        );
+
+        res.status(200).json({ message: "success" });
+      });
+
+      req.pipe(busboy);
     } catch (error) {
       return next(error);
     }
@@ -175,8 +133,6 @@ router.delete(
         _id: req.params.id,
         authorId: req.user._id,
       });
-
-      updateWebHook();
 
       res.status(200).json({ message: "success" });
     } catch (error) {

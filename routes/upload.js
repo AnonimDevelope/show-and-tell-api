@@ -1,43 +1,27 @@
 const express = require("express");
-const multer = require("multer");
 const fetch = require("node-fetch");
-const Jimp = require("jimp");
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "./uploads/posts");
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + file.originalname);
-  },
-});
-
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: 1024 * 1024 * 15 }, //limit 15 megabytes
-});
+const Busboy = require("busboy");
+const { uploadToS3, optimizeImage } = require("../functions/upload");
 
 const router = express.Router();
 
-router.post("/posts/file", upload.single("image"), async (req, res, next) => {
-  const path = req.file.path.replaceAll("\\", "/");
-  const re = /(?:\.([^.]+))?$/;
-  const type = re.exec(req.file.originalname)[1];
-
-  if (type === "jpg" || type === "jpeg" || type === "png") {
-    const image = await Jimp.read(path);
-    image
-      .resize(870, Jimp.AUTO)
-      .quality(60)
-      .write("./" + path);
-  }
+router.post("/posts/file", async (req, res, next) => {
   try {
-    res.json({
-      success: 1,
-      file: {
-        url: process.env.DOMAIN + "/" + req.file.path.replaceAll("\\", "/"),
-      },
+    const busboy = new Busboy({ headers: req.headers });
+
+    busboy.on("finish", async () => {
+      const img = await optimizeImage(req.files.image.data, 900);
+      const url = await uploadToS3(img, req.files.image.name);
+
+      res.json({
+        success: 1,
+        file: {
+          url: url,
+        },
+      });
     });
+
+    req.pipe(busboy);
   } catch (error) {
     res.status(500).json({
       success: 0,
@@ -48,28 +32,22 @@ router.post("/posts/file", upload.single("image"), async (req, res, next) => {
 router.post("/posts/url", async (req, res) => {
   try {
     const { url } = req.body;
+
     const response = await fetch(url);
     const buffer = await response.buffer();
-    const name = Date.now() + url.substring(url.lastIndexOf("/") + 1);
-    const path = `/uploads/posts/` + name;
-    const re = /(?:\.([^.]+))?$/;
-    const type = re.exec(req.file.originalname)[1];
+    const name = url.substring(url.lastIndexOf("/") + 1);
 
-    if (type === "jpg" || type === "jpeg" || type === "png") {
-      const image = await Jimp.read(buffer);
-      image
-        .resize(870, Jimp.AUTO)
-        .quality(60)
-        .write("." + path);
-    }
+    const img = await optimizeImage(buffer, 900);
+    const imageUrl = await uploadToS3(img, name);
 
-    res.status(200).json({
+    res.json({
       success: 1,
       file: {
-        url: process.env.DOMAIN + path,
+        url: imageUrl,
       },
     });
   } catch (error) {
+    console.log(error);
     res.status(500).json({
       success: 0,
     });

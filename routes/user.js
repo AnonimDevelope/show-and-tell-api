@@ -4,17 +4,10 @@ const Post = require("../models/Post");
 const passport = require("passport");
 const { Types } = require("mongoose");
 const nodemailer = require("nodemailer");
-const multer = require("multer");
-const Jimp = require("jimp");
-const bcrypt = require("bcrypt");
+const Busboy = require("busboy");
+const { uploadToS3, optimizeImage } = require("../functions/upload");
 
 const router = express.Router();
-
-const updateWebHook = () => {
-  fetch(process.env.UPDATE_HOOK, {
-    method: "POST",
-  });
-};
 
 router.get(
   "/",
@@ -265,7 +258,6 @@ router.get(
         .in(postIdList)
         .select("title content date authorId thumbnail slug")
         .lean();
-
       posts.forEach((post) => {
         const data = user.saves.find(
           (item) => item._id.toString() === post._id.toString()
@@ -345,38 +337,12 @@ router.get(
   }
 );
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "./uploads/users");
-  },
-  filename: (req, file, cb) => {
-    const re = /(?:\.([^.]+))?$/;
-    const type = re.exec(file.originalname)[1];
-
-    cb(null, req.user._id + "." + type);
-  },
-});
-
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: 1024 * 1024 * 7 }, //limit 7 megabytes
-});
-
 router.post(
   "/update",
   passport.authenticate("jwt", { session: false }),
-  upload.single("avatar"),
   async (req, res, next) => {
     try {
-      const file = req.file || {
-        fieldname: "",
-        originalname: "",
-        encoding: "",
-        mimetype: "",
-        destination: "",
-        filename: "",
-        path: "",
-      };
+      const busboy = new Busboy({ headers: req.headers });
 
       const user = await User.findById(req.user._id).select(
         "resetCode email password name avatar"
@@ -386,34 +352,28 @@ router.post(
         return next("Invalid code");
       }
 
-      const path = file.path.replaceAll("\\", "/");
-      const url = process.env.DOMAIN + "/" + path;
-      const re = /(?:\.([^.]+))?$/;
-      const type = re.exec(file.originalname)[1];
+      busboy.on("finish", async () => {
+        user.resetCode = "0";
+        user.name = req.body.name;
+        if (req.body.email) {
+          user.email = req.body.email;
+        }
+        if (req.files.avatar) {
+          const img = await optimizeImage(req.files.avatar.data, 100, 100);
+          const url = await uploadToS3(img, req.files.avatar.name);
 
-      if (type === "jpg" || type === "jpeg" || type === "png") {
-        const image = await Jimp.read(path);
-        image
-          .resize(100, 100)
-          .quality(60)
-          .write("./" + path);
-      }
+          user.avatar = url;
+        }
+        if (req.body.password) {
+          user.password = req.body.password;
+        }
 
-      user.name = req.body.name;
-      user.email = req.body.email;
-      //user.resetCode = "0";
-      if (req.file) {
-        user.avatar = url;
-      }
-      if (req.body.password) {
-        user.password = req.body.password;
-      }
+        await user.save();
 
-      await user.save();
+        res.status(200).json({ message: "success" });
+      });
 
-      updateWebHook();
-
-      res.status(200).json({ message: "success" });
+      req.pipe(busboy);
     } catch (error) {
       return next(error);
     }
