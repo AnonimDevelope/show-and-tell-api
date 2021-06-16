@@ -72,7 +72,7 @@ const PostSchema = mongoose.Schema({
     required: true,
   },
   content: {
-    type: Object,
+    type: {},
     required: true,
   },
   readTime: {

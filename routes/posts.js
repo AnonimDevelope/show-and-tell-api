@@ -50,7 +50,7 @@ router.post(
           title: req.body.title,
           authorId: req.user._id,
           slug: slug,
-          content: req.body.content,
+          content: JSON.parse(req.body.content),
           readTime: req.body.readTime,
           thumbnail: url,
           comments: [],
@@ -100,7 +100,7 @@ router.post(
           title: req.body.title,
           slug: slug,
           readTime: req.body.readTime,
-          content: req.body.content,
+          content: JSON.parse(req.body.content),
         };
 
         if (req.files.thumbnail) {
