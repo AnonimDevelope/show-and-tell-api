@@ -72,7 +72,7 @@ const PostSchema = mongoose.Schema({
     required: true,
   },
   content: {
-    type: String, //Using String instead of an object because of gatsby bug
+    type: Object,
     required: true,
   },
   readTime: {
