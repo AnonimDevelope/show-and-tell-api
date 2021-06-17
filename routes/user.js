@@ -364,7 +364,7 @@ router.post(
         if (req.body.email) {
           user.email = req.body.email;
         }
-        if (req.files.avatar) {
+        if (req.files && req.files.avatar) {
           const img = await optimizeImage(req.files.avatar.data, 100, 100);
           const url = await uploadToS3(img, req.files.avatar.name);
 
