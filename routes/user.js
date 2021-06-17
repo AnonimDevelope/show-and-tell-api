@@ -75,7 +75,10 @@ const getHistory = async (req) => {
     }
   });
 
-  const posts = await Post.find().where("_id").in(postIds).select("title slug");
+  const posts = await Post.find()
+    .where("_id")
+    .in(postIds)
+    .select("title slug authorId");
   const authors = await User.find().where("_id").in(authorIds).select("name");
 
   const history = [];
@@ -88,9 +91,8 @@ const getHistory = async (req) => {
       (pst) => pst._id.toString() === item._id.toString()
     );
 
-    console.log("item", item);
-    console.log("author", author);
-    console.log("post", post);
+    if (!author) return;
+    if (!post) return;
 
     history.push({
       ...item,

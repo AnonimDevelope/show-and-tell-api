@@ -210,19 +210,15 @@ const getComments = async (req) => {
   return comments;
 };
 
-router.get(
-  "/:id/comments",
-  passport.authenticate("jwt", { session: false }),
-  async (req, res, next) => {
-    try {
-      const comments = await getComments(req);
+router.get("/:id/comments", async (req, res, next) => {
+  try {
+    const comments = await getComments(req);
 
-      res.status(200).json(comments);
-    } catch (error) {
-      return next(error);
-    }
+    res.status(200).json(comments);
+  } catch (error) {
+    return next(error);
   }
-);
+});
 
 router.post(
   "/:id/comments",
