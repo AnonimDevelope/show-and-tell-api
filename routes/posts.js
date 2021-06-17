@@ -32,7 +32,6 @@ router.post(
   passport.authenticate("jwt", { session: false }),
   async (req, res, next) => {
     try {
-      console.log("TITLE: ", req.body.title);
       let slug = req.body.title.toLowerCase().replace("/s/g", "-");
 
       const isSlugExist = await Post.exists({ slug });
@@ -44,11 +43,8 @@ router.post(
       const busboy = new Busboy({ headers: req.headers });
 
       busboy.on("finish", async () => {
-        console.log("initializing");
         const img = await optimizeImage(req.files.thumbnail.data, 675);
-        console.log("optimized image: ", img);
         const url = await uploadToS3(img, req.files.thumbnail.name);
-        console.log("upload url: ", url);
 
         const post = new Post({
           title: req.body.title,

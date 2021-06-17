@@ -7,7 +7,6 @@ const router = express.Router();
 
 router.post("/posts/file", async (req, res, next) => {
   try {
-    console.log("Upload init");
     const busboy = new Busboy({ headers: req.headers });
 
     busboy.on("finish", async () => {
