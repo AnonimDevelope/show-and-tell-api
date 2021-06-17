@@ -7,11 +7,14 @@ const router = express.Router();
 
 router.post("/posts/file", async (req, res, next) => {
   try {
+    console.log("Upload init");
     const busboy = new Busboy({ headers: req.headers });
 
     busboy.on("finish", async () => {
       const img = await optimizeImage(req.files.image.data, 900);
+      console.log("img: ", img);
       const url = await uploadToS3(img, req.files.image.name);
+      console.log("url: ", url);
 
       res.json({
         success: 1,
@@ -23,6 +26,7 @@ router.post("/posts/file", async (req, res, next) => {
 
     req.pipe(busboy);
   } catch (error) {
+    console.log("error: ", error);
     res.status(500).json({
       success: 0,
     });

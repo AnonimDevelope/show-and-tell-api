@@ -88,6 +88,10 @@ const getHistory = async (req) => {
       (pst) => pst._id.toString() === item._id.toString()
     );
 
+    console.log("item", item);
+    console.log("author", author);
+    console.log("post", post);
+
     history.push({
       ...item,
       timestamp: item.date,
