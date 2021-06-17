@@ -32,6 +32,7 @@ router.post(
   passport.authenticate("jwt", { session: false }),
   async (req, res, next) => {
     try {
+      console.log("TITLE: ", req.body.title);
       let slug = req.body.title.toLowerCase().replaceAll(" ", "-");
 
       const isSlugExist = await Post.exists({ slug });
