@@ -43,8 +43,11 @@ router.post(
       const busboy = new Busboy({ headers: req.headers });
 
       busboy.on("finish", async () => {
+        console.log("initializing");
         const img = await optimizeImage(req.files.thumbnail.data, 675);
+        console.log("optimized image: ", img);
         const url = await uploadToS3(img, req.files.thumbnail.name);
+        console.log("upload url: ", url);
 
         const post = new Post({
           title: req.body.title,
@@ -66,6 +69,7 @@ router.post(
 
       req.pipe(busboy);
     } catch (error) {
+      console.log(error);
       return next(error);
     }
   }
