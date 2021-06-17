@@ -33,7 +33,7 @@ router.post(
   async (req, res, next) => {
     try {
       console.log("TITLE: ", req.body.title);
-      let slug = req.body.title.toLowerCase().replace("/ /g", "-");
+      let slug = req.body.title.toLowerCase().replace("/s/g", "-");
 
       const isSlugExist = await Post.exists({ slug });
 
@@ -97,7 +97,7 @@ router.post(
   passport.authenticate("jwt", { session: false }),
   async (req, res, next) => {
     try {
-      let slug = req.body.title.toLowerCase().replaceAll(" ", "-");
+      let slug = req.body.title.toLowerCase().replace("/s/g", "-");
       const busboy = new Busboy({ headers: req.headers });
 
       busboy.on("finish", async () => {
