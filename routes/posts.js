@@ -135,7 +135,12 @@ router.delete(
         authorId: req.user._id,
       });
 
-      res.status(200).json({ message: "success" });
+      const user = await User.findById(req.user._id)
+        .select("name avatar email")
+        .lean();
+      const posts = await Post.find({ authorId: req.user._id }).lean();
+
+      res.status(200).json({ ...user, posts });
     } catch (error) {
       return next(error);
     }
@@ -176,9 +181,12 @@ const getComments = async (req) => {
 
       let myAction = "";
 
-      if (nestedComm.likes.find((id) => id === req.user._id)) {
+      if (req.user && nestedComm.likes.find((id) => id === req.user._id)) {
         myAction = "liked";
-      } else if (nestedComm.dislikes.find((id) => id === req.user._id)) {
+      } else if (
+        req.user &&
+        nestedComm.dislikes.find((id) => id === req.user._id)
+      ) {
         myAction = "disliked";
       }
 
@@ -197,9 +205,9 @@ const getComments = async (req) => {
 
     let myAction = "";
 
-    if (comment.likes.find((id) => id === req.user._id)) {
+    if (req.user && comment.likes.find((id) => id === req.user._id)) {
       myAction = "liked";
-    } else if (comment.dislikes.find((id) => id === req.user._id)) {
+    } else if (req.user && comment.dislikes.find((id) => id === req.user._id)) {
       myAction = "disliked";
     }
 
@@ -210,15 +218,20 @@ const getComments = async (req) => {
   return comments;
 };
 
-router.get("/:id/comments", async (req, res, next) => {
-  try {
-    const comments = await getComments(req);
+router.get(
+  "/:id/comments",
+  passport.authenticate(["jwt", "anonymous"], { session: false }),
+  async (req, res, next) => {
+    try {
+      const comments = await getComments(req);
 
-    res.status(200).json(comments);
-  } catch (error) {
-    return next(error);
+      res.status(200).json(comments);
+    } catch (error) {
+      console.log(error);
+      return next(error);
+    }
   }
-});
+);
 
 router.post(
   "/:id/comments",
