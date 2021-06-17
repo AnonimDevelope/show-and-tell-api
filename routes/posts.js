@@ -104,7 +104,7 @@ router.post(
           content: JSON.parse(req.body.content),
         };
 
-        if (req.files.thumbnail) {
+        if (req.files && req.files.thumbnail) {
           const img = await optimizeImage(req.files.thumbnail.data, 675);
           const url = await uploadToS3(img, req.files.thumbnail.name);
           updateObj.thumbnail = url;
