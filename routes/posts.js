@@ -32,7 +32,7 @@ router.post(
   passport.authenticate("jwt", { session: false }),
   async (req, res, next) => {
     try {
-      let slug = req.body.title.toLowerCase().replace("/s/g", "-");
+      let slug = req.body.title.replace(/\s+/g, "-").toLowerCase();
 
       const isSlugExist = await Post.exists({ slug });
 
@@ -93,7 +93,7 @@ router.post(
   passport.authenticate("jwt", { session: false }),
   async (req, res, next) => {
     try {
-      let slug = req.body.title.toLowerCase().replace("/s/g", "-");
+      let slug = req.body.title.replace(/\s+/g, "-").toLowerCase();
       const busboy = new Busboy({ headers: req.headers });
 
       busboy.on("finish", async () => {
