@@ -295,7 +295,7 @@ router.get(
 );
 
 const getAccessId = async () => {
-  const id = Math.floor(Math.random() * 99999) + 1;
+  const id = Math.floor(Math.random() * (99999 - 10000 + 1) + 10000);
 
   const isExist = await User.exists({ resetCode: id });
   if (isExist) {
@@ -327,7 +327,7 @@ router.get(
       await transporter.sendMail({
         from: `"Show&Tell" ${process.env.EMAIL}`,
         to: req.user.email,
-        subject: "Password Reset",
+        subject: "Profile update",
         html: `
           <h3>Your code: </h3>
           <h1>${id}</h1>

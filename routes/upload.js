@@ -12,9 +12,7 @@ router.post("/posts/file", async (req, res, next) => {
 
     busboy.on("finish", async () => {
       const img = await optimizeImage(req.files.image.data, 900);
-      console.log("img: ", img);
       const url = await uploadToS3(img, req.files.image.name);
-      console.log("url: ", url);
 
       res.json({
         success: 1,
