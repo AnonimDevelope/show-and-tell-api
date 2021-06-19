@@ -388,7 +388,7 @@ router.post(
 
 router.get(
   "/:uid",
-  passport.authenticate(["jwt", "anonymous"], { session: false }),
+  //passport.authenticate(["jwt", "anonymous"], { session: false }),
   async (req, res, next) => {
     try {
       const userId = req.params.uid;
