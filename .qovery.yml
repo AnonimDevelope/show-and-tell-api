@@ -1,0 +1,11 @@
+---
+application:
+  name: "show-and-tell-api"
+  project: "show-and-tell"
+  organization: "QoveryCommunity"
+routers:
+- name: "main-show-and-tell-api"
+  routes:
+  - application_name: "show-and-tell-api"
+    paths:
+    - "/*"
