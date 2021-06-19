@@ -5,6 +5,7 @@ const passport = require("passport");
 require("dotenv/config");
 require("./auth/auth");
 const fileUpload = require("express-fileupload");
+const { wakeDyno } = require("heroku-keep-awake");
 
 const app = express();
 
@@ -45,4 +46,6 @@ app.use(function (err, req, res, next) {
   res.json({ error: err });
 });
 
-app.listen(port);
+app.get("/", (req, res) => res.json({ message: "success" }));
+
+app.listen(port, () => wakeDyno(process.env.DOMAIN));
