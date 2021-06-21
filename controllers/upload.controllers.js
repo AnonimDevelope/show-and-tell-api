@@ -1,11 +1,8 @@
-const express = require("express");
 const fetch = require("node-fetch");
 const Busboy = require("busboy");
 const { uploadToS3, optimizeImage } = require("../functions/upload");
 
-const router = express.Router();
-
-router.post("/posts/file", async (req, res, next) => {
+const postByFile = async (req, res, next) => {
   try {
     const busboy = new Busboy({ headers: req.headers });
 
@@ -28,9 +25,9 @@ router.post("/posts/file", async (req, res, next) => {
       success: 0,
     });
   }
-});
+};
 
-router.post("/posts/url", async (req, res) => {
+const postByUrl = async (req, res) => {
   try {
     const { url } = req.body;
 
@@ -53,6 +50,6 @@ router.post("/posts/url", async (req, res) => {
       success: 0,
     });
   }
-});
+};
 
-module.exports = router;
+module.exports = { postByFile, postByUrl };

@@ -1,31 +1,20 @@
-const express = require("express");
-const passport = require("passport");
-const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const passport = require("passport");
+const { jwtSign } = require("../functions/user");
 
-const router = express.Router();
+const signUp = async (req, res, next) => {
+  const token = jwtSign({ _id: req.user._id, email: req.user.email });
 
-const jwtSign = (body) => {
-  return jwt.sign({ user: body }, "TOP_SECRET");
+  res.status(200).json({
+    token,
+    email: req.user.email,
+    name: req.user.name,
+    avatar: req.user.avatar,
+    _id: req.user._id,
+  });
 };
 
-router.post(
-  "/signup",
-  passport.authenticate("signup", { session: false }),
-  async (req, res, next) => {
-    const token = jwtSign({ _id: req.user._id, email: req.user.email });
-
-    res.status(200).json({
-      token,
-      email: req.user.email,
-      name: req.user.name,
-      avatar: req.user.avatar,
-      _id: req.user._id,
-    });
-  }
-);
-
-router.post("/google", async (req, res, next) => {
+const googleLogin = async (req, res, next) => {
   const { name, email, avatar } = req.body;
   try {
     const existingUser = await User.findOne({ email }).select(
@@ -68,9 +57,9 @@ router.post("/google", async (req, res, next) => {
   } catch (error) {
     return next(error);
   }
-});
+};
 
-router.post("/login", async (req, res, next) => {
+const login = async (req, res, next) => {
   passport.authenticate("login", async (err, user, info) => {
     try {
       if (err || !user) {
@@ -96,6 +85,6 @@ router.post("/login", async (req, res, next) => {
       return next(error);
     }
   })(req, res, next);
-});
+};
 
-module.exports = router;
+module.exports = { signUp, googleLogin, login };
