@@ -35,7 +35,7 @@ const sendCodeEmail = async (code, email, title) => {
 };
 
 const jwtSign = (body) => {
-  return jwt.sign({ user: body }, "TOP_SECRET");
+  return jwt.sign({ user: body }, process.env.JWT_SECRET);
 };
 
 const getDate = (date) => {

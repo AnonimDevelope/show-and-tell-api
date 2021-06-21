@@ -200,7 +200,7 @@ module.exports.updateProfile = async (req, res, next) => {
     const busboy = new Busboy({ headers: req.headers });
 
     const user = await User.findById(req.user._id).select(
-      "resetCode email password name avatar"
+      "resetCode email name avatar"
     );
 
     if (user.resetCode !== req.body.code || user.resetCode === "0") {
@@ -219,6 +219,7 @@ module.exports.updateProfile = async (req, res, next) => {
 
         user.avatar = url;
       }
+
       if (req.body.password) {
         user.password = req.body.password;
       }
