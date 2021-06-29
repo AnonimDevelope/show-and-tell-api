@@ -246,3 +246,58 @@ module.exports.getUserProfile = async (req, res, next) => {
     return next(error);
   }
 };
+
+module.exports.sendResetPasswordCode = async (req, res, next) => {
+  try {
+    const code = await getAccessId();
+    const { email } = req.body;
+
+    await Promise.all([
+      User.findOneAndUpdate({ email }, { resetCode: code }),
+      sendCodeEmail(code, email, "Password reset"),
+    ]);
+
+    res.status(200).json({ message: "success" });
+  } catch (error) {
+    console.log(error);
+    return next(error);
+  }
+};
+
+module.exports.checkResetPasswordCode = async (req, res, next) => {
+  try {
+    const { code, email } = req.body;
+
+    const isValid = await User.exists({ resetCode: code, email });
+
+    if (!isValid) {
+      res.status(500).json({ message: "invalid" });
+      return;
+    }
+
+    res.status(200).json({ message: "success" });
+  } catch (error) {
+    console.log(error);
+    return next(error);
+  }
+};
+
+module.exports.resetPassword = async (req, res, next) => {
+  try {
+    const { password, code, email } = req.body;
+
+    const user = await User.findOne({ email }).select("password resetCode");
+
+    if (user.resetCode !== code) return next("Incorrect code");
+
+    user.password = password;
+    user.resetCode = "0";
+
+    await user.save();
+
+    res.status(200).json({ message: "success" });
+  } catch (error) {
+    console.log(error);
+    return next(error);
+  }
+};

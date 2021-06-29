@@ -37,8 +37,8 @@ module.exports.publishPost = async (req, res, next) => {
     const busboy = new Busboy({ headers: req.headers });
 
     busboy.on("finish", async () => {
-      const img = await optimizeImage(req.files.thumbnail.data, 675);
-      const url = await uploadToS3(img, req.files.thumbnail.name);
+      const { image } = await optimizeImage(req.files.thumbnail.data, 675);
+      const url = await uploadToS3(image, req.files.thumbnail.name);
 
       const post = new Post({
         title: req.body.title,

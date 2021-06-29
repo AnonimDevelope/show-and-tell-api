@@ -58,6 +58,12 @@ router.post(
   userControllers.updateProfile
 );
 
+router.post("/passwordReset", userControllers.sendResetPasswordCode);
+
+router.post("/resetCodeCheck", userControllers.checkResetPasswordCode);
+
+router.post("/resetPassword", userControllers.resetPassword);
+
 router.get("/:uid", userControllers.getUserProfile);
 
 module.exports = router;

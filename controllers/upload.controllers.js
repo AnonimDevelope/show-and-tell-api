@@ -7,13 +7,18 @@ const postByFile = async (req, res, next) => {
     const busboy = new Busboy({ headers: req.headers });
 
     busboy.on("finish", async () => {
-      const img = await optimizeImage(req.files.image.data, 900);
-      const url = await uploadToS3(img, req.files.image.name);
+      const { image, width, height } = await optimizeImage(
+        req.files.image.data,
+        900
+      );
+      const url = await uploadToS3(image, req.files.image.name);
 
       res.json({
         success: 1,
         file: {
           url: url,
+          width,
+          height,
         },
       });
     });
@@ -35,13 +40,15 @@ const postByUrl = async (req, res) => {
     const buffer = await response.buffer();
     const name = url.substring(url.lastIndexOf("/") + 1);
 
-    const img = await optimizeImage(buffer, 900);
-    const imageUrl = await uploadToS3(img, name);
+    const { image, width, height } = await optimizeImage(buffer, 900);
+    const imageUrl = await uploadToS3(image, name);
 
     res.json({
       success: 1,
       file: {
         url: imageUrl,
+        width,
+        height,
       },
     });
   } catch (error) {
